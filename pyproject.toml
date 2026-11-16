@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arxflex"
+version = "0.1.0"
+description = "ARX models with nonlinear input blocks (splines, sigmoid and PCHIP valve curves), specified as formulas"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Peder Bacher", email = "pbac@dtu.dk" }]
+keywords = ["ARX", "system identification", "grey-box modelling", "time series",
+            "B-splines", "building energy", "indoor temperature"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = ["numpy", "scipy"]
+
+[project.optional-dependencies]
+pandas = ["pandas"]          # data frames as input to compile_model/fitmodel
+plot = ["matplotlib"]        # plot_fit, plot_daily_residuals
+# the example data and what the vignette needs
+examples = ["arxflex-borgerskolen", "pandas", "matplotlib"]
+
+[project.urls]
+Paper = "https://doi.org/10.1016/j.egyai.2022.100165"
+Homepage = "https://github.com/OWNER/arxflex"
+Source = "https://github.com/OWNER/arxflex"
+Issues = "https://github.com/OWNER/arxflex/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

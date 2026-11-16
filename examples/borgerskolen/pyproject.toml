@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arxflex-borgerskolen"
+version = "0.1.0"
+description = "Example data for arxflex: room temperatures in Borgerskolen, March 2021"
+readme = "README.md"
+# code under GPL-3.0-or-later, the data under CC BY 4.0 (see DATA_LICENSE.md)
+license = "GPL-3.0-or-later AND CC-BY-4.0"
+license-files = ["LICENSE", "DATA_LICENSE.md"]
+requires-python = ">=3.10"
+authors = [{ name = "Peder Bacher", email = "pbac@dtu.dk" }]
+keywords = ["arxflex", "example data", "building energy", "indoor temperature"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = ["arxflex", "pandas"]
+
+[project.urls]
+Homepage = "https://github.com/OWNER/arxflex/tree/main/examples/borgerskolen"
+Source = "https://github.com/OWNER/arxflex"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+arxflex_borgerskolen = ["borgerskolen_experiment.csv"]

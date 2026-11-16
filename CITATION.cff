@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use arxflex, please cite the article below."
+title: "arxflex: ARX models with nonlinear input blocks, specified as formulas"
+type: software
+authors:
+  - family-names: Bacher
+    given-names: Peder
+license: GPL-3.0-or-later
+repository-code: "https://github.com/OWNER/arxflex"
+version: 0.1.0
+keywords:
+  - ARX
+  - system identification
+  - grey-box modelling
+  - building energy
+preferred-citation:
+  type: article
+  title: "Identification of non-linear autoregressive models with exogenous inputs for room air temperature modelling"
+  authors:
+    - family-names: Thilker
+      given-names: Christian Ankerstjerne
+    - family-names: Bacher
+      given-names: Peder
+    - family-names: Cali
+      given-names: Davide
+    - family-names: Madsen
+      given-names: Henrik
+  journal: "Energy and AI"
+  volume: 9
+  start: 100165
+  year: 2022
+  publisher:
+    name: Elsevier
+  doi: "10.1016/j.egyai.2022.100165"
