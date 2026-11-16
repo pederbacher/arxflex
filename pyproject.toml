@@ -31,9 +31,9 @@ examples = ["arxflex-borgerskolen", "pandas", "matplotlib"]
 
 [project.urls]
 Paper = "https://doi.org/10.1016/j.egyai.2022.100165"
-Homepage = "https://github.com/OWNER/arxflex"
-Source = "https://github.com/OWNER/arxflex"
-Issues = "https://github.com/OWNER/arxflex/issues"
+Homepage = "https://github.com/pederbacher/arxflex"
+Source = "https://github.com/pederbacher/arxflex"
+Issues = "https://github.com/pederbacher/arxflex/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -6,7 +6,7 @@ authors:
   - family-names: Bacher
     given-names: Peder
 license: GPL-3.0-or-later
-repository-code: "https://github.com/OWNER/arxflex"
+repository-code: "https://github.com/pederbacher/arxflex"
 version: 0.1.0
 keywords:
   - ARX

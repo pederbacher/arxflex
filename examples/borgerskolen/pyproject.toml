@@ -23,8 +23,8 @@ classifiers = [
 dependencies = ["arxflex", "pandas"]
 
 [project.urls]
-Homepage = "https://github.com/OWNER/arxflex/tree/main/examples/borgerskolen"
-Source = "https://github.com/OWNER/arxflex"
+Homepage = "https://github.com/pederbacher/arxflex/tree/main/examples/borgerskolen"
+Source = "https://github.com/pederbacher/arxflex"
 
 [tool.setuptools.packages.find]
 where = ["src"]

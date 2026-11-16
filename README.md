@@ -24,8 +24,9 @@ fit = fitmodel(df, "Ti", {
 print_fit(fit)
 ```
 
-For a worked example, see the vignette
-[`examples/borgerskolen/vignette.py`](examples/borgerskolen/vignette.py). It
+For a worked example, see the vignette, rendered with all figures at
+<https://pederbacher.github.io/arxflex/>; its source is
+[`examples/borgerskolen/vignette.py`](https://github.com/pederbacher/arxflex/blob/main/examples/borgerskolen/vignette.py). It
 loads the example data, fits and compares models, and analyses the results.
 Run it cell by cell, or render it to HTML with
 `quarto render examples/borgerskolen/vignette.py`.
@@ -41,8 +42,8 @@ pip install "arxflex[examples]"        # also the example data and what the vign
 Directly from GitHub:
 
 ```sh
-pip install "arxflex[pandas,plot] @ git+https://github.com/OWNER/arxflex"
-pip install "arxflex-borgerskolen @ git+https://github.com/OWNER/arxflex#subdirectory=examples/borgerskolen"
+pip install "arxflex[pandas,plot] @ git+https://github.com/pederbacher/arxflex"
+pip install "arxflex-borgerskolen @ git+https://github.com/pederbacher/arxflex#subdirectory=examples/borgerskolen"
 ```
 
 For development, from a clone: `pip install -e ".[pandas,plot]" -e examples/borgerskolen`.
@@ -84,5 +85,5 @@ If you use arxflex in your work, please cite the article above:
 ## Licence
 
 arxflex is free software under the GNU General Public License, version 3 or
-later (GPL-3.0-or-later); see [`LICENSE`](LICENSE). The example data are under
-CC BY 4.0; see [`examples/borgerskolen/DATA_LICENSE.md`](examples/borgerskolen/DATA_LICENSE.md).
+later (GPL-3.0-or-later); see [`LICENSE`](https://github.com/pederbacher/arxflex/blob/main/LICENSE). The example data are under
+CC BY 4.0; see [`examples/borgerskolen/DATA_LICENSE.md`](https://github.com/pederbacher/arxflex/blob/main/examples/borgerskolen/DATA_LICENSE.md).

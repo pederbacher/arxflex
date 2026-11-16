@@ -1,6 +1,6 @@
 # arxflex-borgerskolen
 
-Example data for [arxflex](../../README.md): 30-min room temperatures and
+Example data for [arxflex](https://github.com/pederbacher/arxflex): 30-min room temperatures and
 thermostat set-points for 16 rooms in Borgerskolen, 1-27 March 2021, with
 outdoor temperature and global radiation from DMI station 06188 (Sjaelsmark).
 
@@ -34,7 +34,7 @@ were downloaded in 2026 from DMI's open data API (v2); the original analysis
 used the older v1 API, which no longer exists.
 
 The data are licensed under CC BY 4.0; the weather data are from the Danish
-Meteorological Institute (DMI). See [`DATA_LICENSE.md`](DATA_LICENSE.md).
+Meteorological Institute (DMI). See [`DATA_LICENSE.md`](https://github.com/pederbacher/arxflex/blob/main/examples/borgerskolen/DATA_LICENSE.md).
 
 ## Folders (repository only, not installed)
 
