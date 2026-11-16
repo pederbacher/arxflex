@@ -112,12 +112,14 @@ for ax in axes:
     ax.grid(alpha=0.4)
 fig.suptitle(f"Room C{room}")
 fig.tight_layout()
-################################################################
 
 
-################################################################
+
+# %% [markdown]
+# ### First an example with a model, which is not including the the solar part
+#
 model_sigmoid = {
-    "AR": 1,
+    "AR": 2,
     "ambient": "Ta - Ti",
     "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
 }
@@ -139,10 +141,8 @@ plot_fit(fit_sigmoid1, name=f"C{room} sigmoid", plots="residual_series",
 # the residuals that is there on sunny days only points to direct solar gain.
 plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²")
-################################################################
 
 
-################################################################
 # %% [markdown]
 # ## Specifying a model
 #
