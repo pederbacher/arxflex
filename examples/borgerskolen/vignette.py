@@ -5,6 +5,11 @@
 #   html:
 #     toc: true
 #     embed-resources: true
+#     include-in-header:
+#       text: |
+#         <style>
+#         .cell-output-display img { max-width: 100%; height: auto; }
+#         </style>
 # jupyter: python3
 # execute:
 #   cache: true
@@ -14,7 +19,9 @@
 # input blocks to room temperatures, simulate them, and compare models. It
 # uses the example data in **arxflex-borgerskolen**: 30-min measurements from
 # a school in March 2021.
-#
+
+# %% [markdown]
+# <!--
 # You can run it cell by cell (`# %%` marks a cell) in Emacs, VS Code or
 # Jupyter, or render it to HTML from `examples/borgerskolen`:
 #
@@ -28,6 +35,7 @@
 # ```sh
 # pip install ".[pandas,plot]" ./examples/borgerskolen
 # ```
+# -->
 
 # %% [markdown]
 # ## Setup
@@ -37,7 +45,6 @@
 #
 
 # %%
-################################################################
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -49,7 +56,6 @@ from arxflex import (fitmodel, print_fit, fit_row, plot_simulation,
                      plot_residual_series, plot_residuals, plot_ccf,
                      plot_blocks, plot_daily_residuals)
 from arxflex_borgerskolen import load_processed_data, available_rooms, temperature_column
-################################################################
 
 # %% [markdown]
 # ## The data
@@ -60,10 +66,15 @@ from arxflex_borgerskolen import load_processed_data, available_rooms, temperatu
 # radiation `Ps` from the DMI weather station in Sjaelsmark.
 
 # %%
+# The dimensions of the data
 data = load_processed_data()
 print(data.shape)
-print(data["time"].iloc[[0, -1]].tolist())
-available_rooms(data)
+# %%
+# The time range
+print(data["time"].iloc[0])
+print(data["time"].iloc[-1])
+# %% The available rooms
+print(" ".join(available_rooms(data)))
 
 # %% [markdown]
 # ### One room as a data frame
@@ -116,6 +127,7 @@ fig.suptitle(f"Room C{room}")
 fig.tight_layout()
 
 # %% [markdown]
+# ## First, fit a bit simple model
 # First fit a model, which is not including the ambient and solar parts, and one auto-regressive lag.
 #
 # The heating part: v(sigmoid, Tset - Ti) models the heat input using a sigmoid (two hyper parameters: position and slope).
@@ -127,27 +139,24 @@ model_sigmoid = {
     "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
 }
 # Fit it to the data 
-fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
+fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
 
 # %% [markdown]
 # See the estimation and optimization results of the entire period using the fit
 # %%
-print_fit(fit_sigmoid1)
+print_fit(fitSigmoid)
 
 # %% [markdown]
-# Plot the forecast over time
+# #### Plot the forecast over time
 # %%
-plot_simulation(fit_sigmoid1, name=f"C{room} sigmoid", per_day=PER_DAY,
+plot_simulation(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
                 inputs=["Ta", "Ps"], regcontribution=[["heating"]]);
 
 # %% [markdown]
+# #### ACF of the one-step residuals
 # %%
-plot_residuals(fit_sigmoid1, name=f"C{room} sigmoid", per_day=PER_DAY);
+plot_residuals(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
 
-# %% [markdown]
-# %% See the cross-correlation functions from the errors to the inputs
-plot_ccf(fit_sigmoid1, inputs=["Ps", "Ta", "Tset"], reginput=[["heating"]],
-         maxlag=PER_DAY);
 
 # %% [markdown]
 # We find that there still is some significant auto-correlation, so we will add one more AR lag
@@ -159,20 +168,23 @@ model_sigmoid = {
     "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
 }
 # Fit it to the data 
-fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
+fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
 
-plot_ccf(fit_sigmoid1, inputs=["Ps", "Ta", "Tset"], reginput=[["heating"]],
-         maxlag=PER_DAY);
+# %% [markdown]
+# #### ACF of the one-step residuals
+# Now no significant ARC :)
+# %% 
+plot_residuals(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
 
 
 
 # %%
-fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
-print_fit(fit_sigmoid1)
+fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
+print_fit(fitSigmoid)
 
 # Sunny against cloudy days, side by side on the same scales: a morning bump in
 # the residuals that is there on sunny days only points to direct solar gain.
-plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
+plot_daily_residuals(fitSigmoid, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
 ################################################################
 
@@ -190,18 +202,18 @@ model_sigmoid = {
 
 
 # %%
-fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
-print_fit(fit_sigmoid1)
+fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
+print_fit(fitSigmoid)
 #
 # Sunny against cloudy days, side by side on the same scales: a morning bump in
 # the residuals that is there on sunny days only points to direct solar gain.
-plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
+plot_daily_residuals(fitSigmoid, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
 #
-plot_simulation(fit_sigmoid1, name=f"C{room} sigmoid", per_day=PER_DAY,
+plot_simulation(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
                 inputs=["Ta", "Ps"], regcontribution=[["heating"]]);
 #
-plot_blocks(fit_sigmoid1, max_day="solar", time=df["time"]);
+plot_blocks(fitSigmoid, max_day="solar", time=df["time"]);
 ################################################################
 
 # %% [markdown]
