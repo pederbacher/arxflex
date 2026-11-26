@@ -6,6 +6,8 @@
 #     toc: true
 #     embed-resources: true
 # jupyter: python3
+# execute:
+#   cache: true
 # ---
 #
 # This vignette shows how to use **arxflex** to fit ARX models with nonlinear
@@ -42,7 +44,9 @@ import matplotlib.pyplot as plt
 plt.close("all")
 plt.ion()
 
-from arxflex import fitmodel, print_fit, fit_row, plot_fit, plot_daily_residuals
+from arxflex import (fitmodel, print_fit, fit_row, plot_simulation,
+                     plot_residual_series, plot_residuals, plot_ccf,
+                     plot_blocks, plot_daily_residuals)
 from arxflex_borgerskolen import load_processed_data, available_rooms, temperature_column
 
 # %% [markdown]
@@ -60,25 +64,23 @@ print(data["time"].iloc[[0, -1]].tolist())
 available_rooms(data)
 
 # %% [markdown]
-# ### One room as a model data frame
-#
-# `fitmodel()` knows nothing about rooms or column names: every variable in a
-# formula is simply a column of the data frame it gets. So the first step is
-# always to build a small data frame with short, convenient names. Here:
+# ### One room as a data frame
 #
 # | column      | meaning                                              |
 # |-------------|------------------------------------------------------|
 # | `Ti`        | room temperature [°C], the output                    |
 # | `Ta`        | outdoor temperature [°C]                             |
-# | `Ps`        | global radiation [kW/m²]                              |
+# | `Ps`        | global radiation [kW/m²]                             |
 # | `Tset`      | thermostat set-point [°C]                            |
 # | `Tfor`      | forward temperature of the heating, assumed 60 °C    |
 # | `timeofday` | hour of the day (UTC), for the solar gain spline     |
+#
+# We do some processing to get the data for a single room into a data frame (df). Seen for one room in the plot below
 
 # %%
+#| echo: false
 TFOR = 60.0          # assumed forward temperature [°C]
 PER_DAY = 48         # samples per day (30 min)
-
 
 def room_frame(data, room):
     """The columns one room's models use, with short names."""
@@ -93,12 +95,10 @@ def room_frame(data, room):
         "timeofday": (time.dt.hour + time.dt.minute / 60).to_numpy(float),
     })
 
-
-room = "0.07"
+room = "0.06"
 df = room_frame(data, room)
-df.describe().round(2)
+# df.describe().round(2)
 
-# %%
 fig, axes = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
 axes[0].plot(df["time"], df["Ti"], label="Ti", color="orangered")
 axes[0].plot(df["time"], df["Tset"], label="Tset", color="grey", lw=1)
@@ -113,34 +113,91 @@ for ax in axes:
 fig.suptitle(f"Room C{room}")
 fig.tight_layout()
 
+# %% [markdown]
+# First fit a model, which is not including the ambient and solar parts, and one auto-regressive lag.
+#
+# The heating part: v(sigmoid, Tset - Ti) models the heat input using a sigmoid (two hyper parameters: position and slope).
 
+# %%
+model_sigmoid = {
+    "AR": 1,
+    "ambient": "Ta - Ti",
+    "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+}
+# Fit it to the data 
+fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
 
 # %% [markdown]
-# ### First an example with a model, which is not including the the solar part
-#
+# See the estimation and optimization results of the entire period using the fit
+# %%
+print_fit(fit_sigmoid1)
+
+# %% [markdown]
+# Plot the forecast over time
+# %%
+plot_simulation(fit_sigmoid1, name=f"C{room} sigmoid", per_day=PER_DAY,
+                inputs=["Ta", "Ps"], regcontribution=[["heating"]]);
+
+# %% [markdown]
+# %%
+plot_residuals(fit_sigmoid1, name=f"C{room} sigmoid", per_day=PER_DAY);
+
+# %% [markdown]
+# %% See the cross-correlation functions from the errors to the inputs
+plot_ccf(fit_sigmoid1, inputs=["Ps", "Ta", "Tset"], reginput=[["heating"]],
+         maxlag=PER_DAY);
+
+# %% [markdown]
+# We find that there still is some significant auto-correlation, so we will add one more AR lag
+
+# %%
 model_sigmoid = {
     "AR": 2,
     "ambient": "Ta - Ti",
     "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
 }
+# Fit it to the data 
+fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
 
+plot_ccf(fit_sigmoid1, inputs=["Ps", "Ta", "Tset"], reginput=[["heating"]],
+         maxlag=PER_DAY);
+
+
+
+# %% [markdown]
 fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
 print_fit(fit_sigmoid1)
-
-plot_fit(fit_sigmoid1, name=f"C{room} sigmoid", plots="simulation",
-                per_day=PER_DAY, inputs=["Ta", "Ps"],
-                regcontribution=[["ambient", "heating"]])
-
-plot_fit(fit_sigmoid1, name=f"C{room} sigmoid", plots="residuals", per_day=PER_DAY)
-
-plot_fit(fit_sigmoid1, name=f"C{room} sigmoid", plots="residual_series",
-                per_day=PER_DAY, inputs=["Ta", "Ps"],
-                regcontribution=[["ambient", "heating"]])
 
 # Sunny against cloudy days, side by side on the same scales: a morning bump in
 # the residuals that is there on sunny days only points to direct solar gain.
 plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
-                     name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²")
+                     name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
+
+
+
+
+# %% [markdown]
+# The full models
+# %%
+model_sigmoid = {
+    "AR": 2,
+    "ambient": "Ta - Ti",
+    "solar": "s(timeofday, k=5) * Ps",
+    "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+}
+
+
+# %% [markdown]
+fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
+print_fit(fit_sigmoid1)
+
+# Sunny against cloudy days, side by side on the same scales: a morning bump in
+# the residuals that is there on sunny days only points to direct solar gain.
+plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
+                     name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
+
+
+plot_blocks(fit_sigmoid1, max_day="solar", time=df["time"]);
 
 
 # %% [markdown]
@@ -190,6 +247,14 @@ print("nonlinear parameters per term:", {k: np.round(v, 3) for k, v in fit_sigmo
 print("one-step RMSE:  ", round(fit_sigmoid["rmse"], 4))
 print("simulation RMSE:", round(fit_sigmoid["rmse_sim"], 4))
 
+
+# %% [markdown]
+# ## Analysing the fit
+# %%
+plot_blocks(fit_sigmoid, max_day="solar", time=df["time"]);
+
+
+
 # %% [markdown]
 # ## Analysing the fit
 #
@@ -201,14 +266,14 @@ print("simulation RMSE:", round(fit_sigmoid["rmse_sim"], 4))
 # output back. `fitmodel()` does this by default and stores it in
 # `fit["sim"]`.
 #
-# `plot_fit()` draws the measured and simulated output. Panels can be added
+# `plot_simulation()` draws the measured and simulated output. Panels can be added
 # below it: raw inputs (`inputs=`), and what each term contributes to the
 # prediction (`regcontribution=`), in °C.
 
 # %%
-plot_fit(fit_sigmoid, name=f"C{room} sigmoid", plots="simulation",
-                per_day=PER_DAY, inputs=["Ta", "Ps"],
-                regcontribution=[["ambient", "solar", "heating"]])
+plot_simulation(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
+                inputs=["Ta", "Ps"],
+                regcontribution=[["ambient", "solar", "heating"]]);
 
 # %% [markdown]
 # ### Residuals
@@ -217,28 +282,32 @@ plot_fit(fit_sigmoid, name=f"C{room} sigmoid", plots="simulation",
 # at small lags means there is dynamics the model does not capture.
 
 # %%
-plot_fit(fit_sigmoid, name=f"C{room} sigmoid", plots="residuals", per_day=PER_DAY)
+plot_residuals(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
 
 # %% [markdown]
-# `plots="residual_series"` puts the residuals above the same panels as
-# `"simulation"`, so large residuals can be matched with what the inputs and
+# `plot_residual_series()` puts the residuals above the same panels as
+# `plot_simulation()`, so large residuals can be matched with what the inputs and
 # terms did at that time.
 
 # %%
-plot_fit(fit_sigmoid, name=f"C{room} sigmoid", plots="residual_series",
-                per_day=PER_DAY, inputs=["Ta", "Ps"],
-                regcontribution=[["ambient", "solar", "heating"]])
+plot_residual_series(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
+                     inputs=["Ta", "Ps"],
+                     regcontribution=[["ambient", "solar", "heating"]]);
 
 # %% [markdown]
 # ### The estimated nonlinear functions
 #
-# `plots="blocks"` draws each `s()` and `v()` at the fitted parameters, with
+# `plot_blocks()` draws each `s()` and `v()` at the fitted parameters, with
 # the knots marked. For the solar term this is the gain over the day. For the
 # heating term it is the valve opening against `Tset - Ti`.
+#
+# With `max_day="solar"` a lower panel shows what the solar term adds to the
+# room temperature on the sunniest day (the largest daily sum of `Ps`): the
+# function multiplied by `Ps` and by the term's estimated coefficient (summed
+# over the lags), in °C.
 
 # %%
-plot_fit(fit_sigmoid, name=f"C{room} sigmoid", plots="blocks")
-plt.show()
+plot_blocks(fit_sigmoid, max_day="solar", time=df["time"]);
 
 # %% [markdown]
 # The fitted functions are also available as callables, so they can be
@@ -286,6 +355,8 @@ fits = {"sigmoid": fit_sigmoid}
 for label, model in models.items():
     if label not in fits:
         fits[label] = fitmodel(df, "Ti", model)
+        plot_blocks(fits[label], max_day="solar", time=df["time"]);
+
 
 # %% [markdown]
 # `fit_row()` turns a fit into one row of a comparison table. `S` is the
@@ -314,7 +385,7 @@ plt.show()
 # ### Comparing the valve curves
 #
 # The fitted valve functions are callables, so the two curves can be drawn
-# together. (`plot_fit(..., plots="blocks", block_xlim=(-4, 4))` gives the
+# together. (`plot_blocks(..., xlim=(-4, 4))` gives the
 # same x-range in separate figures.)
 
 # %%
@@ -341,8 +412,7 @@ plt.show()
 n_train = 20 * PER_DAY       # the first 20 days
 fit_val = fitmodel(df, "Ti", model_sigmoid, n_train=n_train, refit_on_all_data=False)
 print(f"simulation RMSE: training {fit_val['rmse_train']:.3f}, test {fit_val['rmse_test']:.3f}")
-plot_fit(fit_val, name=f"C{room} sigmoid, validation", plots="simulation",
-                per_day=PER_DAY)
+plot_simulation(fit_val, name=f"C{room} sigmoid, validation", per_day=PER_DAY);
 plt.show()
 
 # %% [markdown]
@@ -377,7 +447,7 @@ rooms_table[["success", "S", "rmse_onestep", "rmse"]].sort_values("rmse").round(
 #    spline. A term may contain at most one of these, multiplied or divided
 #    by data expressions.
 # 3. Call `fitmodel(df, "y", model)` and look at the result with `print_fit`
-#    and `plot_fit`.
+#    and the `plot_*` functions.
 #
 # The options of each block are documented in its docstring, e.g.
 # `help(arxflex.BSplineBlock)` and `help(arxflex.PchipBlock)`. New blocks can

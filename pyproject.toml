@@ -25,7 +25,7 @@ dependencies = ["numpy", "scipy"]
 
 [project.optional-dependencies]
 pandas = ["pandas"]          # data frames as input to compile_model/fitmodel
-plot = ["matplotlib"]        # plot_fit, plot_daily_residuals
+plot = ["matplotlib"]        # plot_* functions
 # the example data and what the vignette needs
 examples = ["arxflex-borgerskolen", "pandas", "matplotlib"]
 

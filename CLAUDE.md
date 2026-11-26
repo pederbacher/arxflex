@@ -29,7 +29,7 @@ examples/borgerskolen/        a separate package, arxflex-borgerskolen
   (`pip wheel --no-deps --no-build-isolation -w <tmpdir> . ./examples/borgerskolen`)
   and listing their contents.
 - Core dependencies are numpy and scipy; pandas (data-frame input) and
-  matplotlib (`plot_fit`) are the optional extras `[pandas]` and `[plot]`.
+  matplotlib (the `plot_*` functions) are the optional extras `[pandas]` and `[plot]`.
 
 ## Code conventions
 
