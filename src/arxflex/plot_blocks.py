@@ -4,12 +4,12 @@ import ast
 
 import numpy as np
 
-from .nonlinear_blocks import BSplineBlock, PchipBlock
+from .nonlinear_blocks import BSplineBlock, PchipBlock, SigmoidBlock
 from .plot_helpers import _time_stamps
 
 
-def plot_blocks(r, show_knots=True, xlim=None, max_day=(), per_day=None,
-                time=None, data=None):
+def plot_blocks(r, show_knots=True, xlim=None, sigmoid_range=(0.02, 0.98),
+                sim_range=True, max_day=(), per_day=None, time=None, data=None):
     """One figure per nonlinear function (s() or v()) of the model, drawn
     against its input at the fitted parameters.
 
@@ -18,6 +18,13 @@ def plot_blocks(r, show_knots=True, xlim=None, max_day=(), per_day=None,
     xlim       : (lo, hi) x-axis range of all figures, so they can be compared
                  (None: the range of each block's input). A B-spline is only
                  defined on its domain and is always drawn there.
+    sigmoid_range : (lo, hi) values of a sigmoid between which it is drawn,
+                 e.g. from 0.02 to 0.98, so the whole rise is shown whatever
+                 its slope (None: the range of the input; `xlim` overrides it)
+    sim_range  : shade the range of the input in the simulation, for v()
+                 functions whose input depends on the output, e.g. Tset - Ti
+                 with the simulated Ti (the simulation recomputes it at every
+                 step); the x-axis is widened where the range reaches beyond it
     max_day    : term names, e.g. ["solar"], whose figure gets a lower panel
                  with what the term adds to the output on the day with the
                  largest sum of the data its function multiplies; for
@@ -25,9 +32,8 @@ def plot_blocks(r, show_knots=True, xlim=None, max_day=(), per_day=None,
                  of that day against the function's input, as
                  sum(theta) * f(x) * Ps, in the units of the output. The
                  upper panel also shows Ps on that day, on a right-hand axis.
-                 Terms
-                 the model doesn't have are skipped, so one list can be used
-                 for several models.
+                 Terms the model doesn't have are skipped, so one list can be
+                 used for several models.
     per_day, time, data : how samples are grouped into days for `max_day`:
                  calendar days of the time stamps `time` (or of the column
                  `time` of `data`), or else blocks of `per_day` samples
@@ -56,6 +62,15 @@ def plot_blocks(r, show_knots=True, xlim=None, max_day=(), per_day=None,
         elif isinstance(block, PchipBlock):
             # cover all knots, also those outside the range of the data
             lo, hi = min(lo, block.lower), max(hi, block.upper)
+        elif isinstance(block, SigmoidBlock) and sigmoid_range is not None:
+            # 1/(1+exp(-alpha*(x+offset))) = q at x = -offset + logit(q)/alpha
+            alpha, offset = p
+            ends = [-offset + np.log(q / (1 - q)) / alpha for q in sigmoid_range]
+            lo, hi = min(ends), max(ends)
+        span = (_sim_input_range(r, term)
+                if sim_range and not isinstance(block, BSplineBlock) else None)
+        if span is not None:
+            lo, hi = min(lo, span[0]), max(hi, span[1])
         if xlim is not None and not isinstance(block, BSplineBlock):
             lo, hi = xlim
         xx = np.linspace(lo, hi, 300)
@@ -75,6 +90,10 @@ def plot_blocks(r, show_knots=True, xlim=None, max_day=(), per_day=None,
                     a.axvline(k, color="firebrick", ls=":", lw=1)
         ax.set_ylabel(f"{block.kind}({block.name})")
         ax.set_title(term.text, fontsize=9)
+        if span is not None:
+            ax.axvspan(*span, color="steelblue", alpha=0.12, lw=0,
+                       label=f"input in the simulation: {span[0]:.2f} to {span[1]:.2f}")
+            ax.legend(fontsize=8, loc="upper left")
         if term.name in max_day:
             _draw_max_day(ax, ax2, r, term, block, p, days)
         axes[-1].set_xlabel(f"input of {block.kind}() in term {term.name!r}")
@@ -85,6 +104,21 @@ def plot_blocks(r, show_knots=True, xlim=None, max_day=(), per_day=None,
         fig.tight_layout()
         figures[term.name] = fig
     return figures
+
+
+def _sim_input_range(r, term):
+    """(min, max) of the block's input with the simulated output in place of
+    the measured one, as simulate_model() computes it; None when the input
+    does not depend on the output or there is no simulation."""
+    cm = r["compiled"]
+    if r["sim"] is None or not term.uses_y:
+        return None
+    env = {v: cm.columns[v] for v in term.variables if v != cm.y_name}
+    env[cm.y_name] = np.asarray(r["sim"], float)
+    x_sim = np.asarray(term.bind(env).block.x, float)
+    if np.allclose(x_sim, term.block.x, equal_nan=True):
+        return None                          # the output is not in the input
+    return float(np.nanmin(x_sim)), float(np.nanmax(x_sim))
 
 
 def _days(n, per_day, time, data):
