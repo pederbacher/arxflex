@@ -31,7 +31,7 @@ def plot_ccf(r, name="model", inputs=(), reginput=(), data=None, maxlag=40):
     e = np.full(len(y), np.nan)
     e[len(y) - len(resid):] = resid
     lags = np.arange(-maxlag, maxlag + 1)
-    bound = 1.96 / np.sqrt(int(np.isfinite(e).sum()))   # 95% if e is white
+    bound = 1.959964 / np.sqrt(int(np.isfinite(e).sum()))   # 95% if e is white, as in R
 
     if not inputs and not reginput:
         reginput = "all"
@@ -52,7 +52,7 @@ def plot_ccf(r, name="model", inputs=(), reginput=(), data=None, maxlag=40):
                       lw=1.5, label=nm.split("\n")[0])
         ax.axhline(0, color="black", lw=0.6)
         for b in (bound, -bound):
-            ax.axhline(b, color="grey", ls="--", lw=0.8)
+            ax.axhline(b, color="blue", ls="--", lw=0.8)
         ax.axvline(0, color="grey", lw=0.6, ls=":")
         ax.set_ylabel(" / ".join(nm for nm, _ in panel))
         if len(panel) > 1:
