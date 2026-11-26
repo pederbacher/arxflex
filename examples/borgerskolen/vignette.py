@@ -37,6 +37,7 @@
 #
 
 # %%
+################################################################
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -48,6 +49,7 @@ from arxflex import (fitmodel, print_fit, fit_row, plot_simulation,
                      plot_residual_series, plot_residuals, plot_ccf,
                      plot_blocks, plot_daily_residuals)
 from arxflex_borgerskolen import load_processed_data, available_rooms, temperature_column
+################################################################
 
 # %% [markdown]
 # ## The data
@@ -95,7 +97,7 @@ def room_frame(data, room):
         "timeofday": (time.dt.hour + time.dt.minute / 60).to_numpy(float),
     })
 
-room = "0.06"
+room = available_rooms(data)[0]
 df = room_frame(data, room)
 # df.describe().round(2)
 
@@ -164,7 +166,7 @@ plot_ccf(fit_sigmoid1, inputs=["Ps", "Ta", "Tset"], reginput=[["heating"]],
 
 
 
-# %% [markdown]
+# %%
 fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
 print_fit(fit_sigmoid1)
 
@@ -172,33 +174,35 @@ print_fit(fit_sigmoid1)
 # the residuals that is there on sunny days only points to direct solar gain.
 plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
+################################################################
 
 
-
-
+################################################################
 # %% [markdown]
 # The full models
 # %%
 model_sigmoid = {
     "AR": 2,
     "ambient": "Ta - Ti",
-    "solar": "s(timeofday, k=5) * Ps",
+    "solar": "s(timeofday, k=7, knots='free') * Ps",
     "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
 }
 
 
-# %% [markdown]
+# %%
 fit_sigmoid1 = fitmodel(df, "Ti", model_sigmoid)
 print_fit(fit_sigmoid1)
-
+#
 # Sunny against cloudy days, side by side on the same scales: a morning bump in
 # the residuals that is there on sunny days only points to direct solar gain.
 plot_daily_residuals(fit_sigmoid1, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
-
-
+#
+plot_simulation(fit_sigmoid1, name=f"C{room} sigmoid", per_day=PER_DAY,
+                inputs=["Ta", "Ps"], regcontribution=[["heating"]]);
+#
 plot_blocks(fit_sigmoid1, max_day="solar", time=df["time"]);
-
+################################################################
 
 # %% [markdown]
 # ## Specifying a model
