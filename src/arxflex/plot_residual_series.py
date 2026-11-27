@@ -9,7 +9,8 @@ def plot_residual_series(r, name="model", inputs=(), reginput=(),
     """One-step residuals as a time series, with panels of inputs and terms
     below, to see which input a pattern in the residuals follows.
 
-    The arguments are those of plot_simulation(). Returns the matplotlib figure.
+    The arguments are those of plot_simulation(), except `top`. Returns the
+    matplotlib figure.
     """
     L = r["compiled"].L
 

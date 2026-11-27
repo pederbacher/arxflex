@@ -1,10 +1,12 @@
 """Measured and simulated output of a fit, with inputs and terms below."""
 
-from .plot_helpers import TimeAxis, stacked_figure
+from .plot_helpers import TimeAxis, data_column, stacked_figure
+
+TOP_COLOURS = ("grey", "purple", "teal")
 
 
 def plot_simulation(r, name="model", inputs=(), reginput=(), regcontribution=(),
-                    data=None, per_day=None, time=None, xlim=None):
+                    data=None, per_day=None, time=None, xlim=None, top=()):
     """Measured and simulated output, with panels of inputs and terms below.
 
     r       : the result dict from fitmodel()
@@ -34,6 +36,9 @@ def plot_simulation(r, name="model", inputs=(), reginput=(), regcontribution=(),
               time zone is read in the time zone of `time`. Without `time`, give
               days (with `per_day`) or sample numbers. The y-axes are scaled to
               the data inside the range.
+    top     : columns drawn in the upper panel with the measured and simulated
+              output, on the same axis, e.g. ["Tset"] for the set-point; taken
+              from `data`, or from the columns the model already read
 
     Returns the matplotlib figure.
     """
@@ -43,6 +48,9 @@ def plot_simulation(r, name="model", inputs=(), reginput=(), regcontribution=(),
         ax.plot(t, y, color="orangered", lw=1, label=f"{r['y']} measured")
         if sim is not None:
             ax.plot(t, sim, color="deepskyblue", lw=1.5, label="simulation")
+        for j, col in enumerate([top] if isinstance(top, str) else top):
+            ax.plot(t, data_column(r, col, data), color=TOP_COLOURS[j % len(TOP_COLOURS)],
+                    lw=1, label=col, zorder=1)          # behind the output
         ax.set_ylabel(r["y"])
 
     title = f"{name}: {r['y']}, Nd = {r['Nd']}"

@@ -49,9 +49,9 @@ def fitmodel(data, y, model, lags=None, n_train=None, refit_on_all_data=True,
              single term can override it with {"formula": ..., "lags": ...}
     n_train: fit the nonlinear parameters on the first n_train samples only
              (None: use all samples)
-    refit_on_all_data : with n_train, estimate the linear parameters on all
-             samples (True, as in run_valve_spline_model) or on the training
-             samples only (False, a clean train/test split)
+    refit_on_all_data : with n_train, estimate the regression coefficients on
+             all samples (True, as in run_valve_spline_model) or on the
+             training samples only (False, a clean train/test split)
     method, options, x0 : passed to scipy.optimize.minimize; x0 defaults to the
              starting values of the blocks
     simulate: also simulate the output from the inputs only (default True)
@@ -65,7 +65,10 @@ def fitmodel(data, y, model, lags=None, n_train=None, refit_on_all_data=True,
 
     Returns a dict with
       y, Nd, terms, model          what was fitted
-      theta, names, theta_of       linear parameters, their names, per-term slices
+      theta, names, theta_of       regression coefficients, their names and
+                                   per-term slices
+      theta_se                     standard errors of theta, from least squares
+                                   with the nonlinear parameters held fixed
       params, params_of, functions nonlinear parameters, per term, as callables
       S, sigma, resid, fitted      one-step fit: RSS, residual sd, residuals
       rmse                         one-step prediction RMSE
@@ -103,6 +106,10 @@ def fitmodel(data, y, model, lags=None, n_train=None, refit_on_all_data=True,
             f"only {len(yv)} usable samples for {theta_model.ntheta} linear "
             "parameters; too many missing values")
     theta, S = least_squares(X, yv)
+    # Standard errors given the nonlinear parameters: s^2 (X'X)^-1, with the
+    # degrees of freedom reduced by the nonlinear parameters as well
+    s2 = S / max(len(yv) - len(theta) - theta_model.nparam, 1)
+    theta_se = np.sqrt(np.diag(s2 * np.linalg.pinv(X.T @ X)))
 
     # One-step predictions over the whole period. Rows that were dropped keep a
     # NaN here, so fitted and resid stay aligned with the data.
@@ -114,7 +121,8 @@ def fitmodel(data, y, model, lags=None, n_train=None, refit_on_all_data=True,
 
     r = dict(
         y=y, Nd=full.Nd, terms=full.terms, model=model, y_data=full.y_all,
-        theta=theta, names=full.parameter_names(), theta_of=full.theta_slices(),
+        theta=theta, theta_se=theta_se, names=full.parameter_names(),
+        theta_of=full.theta_slices(),
         params=params, params_of=full.unpack(params),
         functions={t.name: t.block.function(params[sl])
                    for t, sl in zip(full.terms, full.slices) if t.block is not None},
@@ -144,34 +152,37 @@ def fitmodel(data, y, model, lags=None, n_train=None, refit_on_all_data=True,
 def print_fit(r):
     """Print the parameters of a fit from fitmodel()."""
     c = r["compiled"]
-    print(f"\noutput {r['y']}, Nd = {r['Nd']}, {c.n} samples"
+    print(f"\nOutput {r['y']}, Nd = {r['Nd']}, {c.n} samples"
           + (f", nonlinear parameters fitted on the first {r['n_train']}" if r["n_train"] else ""))
     for t in r["terms"]:
         print(f"  {t.name:<12} {t.text}" + (f"   [{t.lags} lags]" if t.lags != max(r["Nd"], 1) else ""))
     if r["res"] is not None:
         res = r["res"]
-        print(f"\noptimiser: success={res.success}, S={res.fun:.4f}, nfev={res.nfev}, "
+        print(f"\nOptimiser: success={res.success}, S={res.fun:.4f}, nfev={res.nfev}, "
               f"message: {res.message}")
+        print("\nHyperparameters (nonlinear, optimised)")
+        print(f"  {'Term':<14}{'Parameter':<12}{'Estimate':>12}")
         for t in r["terms"]:
             if t.block is None:
                 continue
-            p = r["params_of"][t.name]
-            print(f"  {t.name:<12} "
-                  + "  ".join(f"{n}={v:.4g}" for n, v in zip(t.block.param_names(), p)))
+            for n, v in zip(t.block.param_names(), r["params_of"][t.name]):
+                print(f"  {t.name:<14}{n:<12}{v:>12.5g}")
 
-    print(f"\n{'parameter':<22}{'estimate':>12}")
-    for name, value in zip(r["names"], r["theta"]):
-        print(f"{name:<22}{value:>12.5g}")
+    print("\nRegression coefficients (least squares"
+          + ("; std. errors given the hyperparameters)" if len(r["params"]) else ")"))
+    print(f"  {'Coefficient':<22}{'Estimate':>12}{'Std. error':>12}")
+    for name, value, se in zip(r["names"], r["theta"], r["theta_se"]):
+        print(f"  {name:<22}{value:>12.5g}{se:>12.4g}")
     sums = [f"{name} {r['theta'][sl].sum():.4g}" for name, sl in r["theta_of"].items()
             if sl.stop > sl.start]
-    print("\nsum over lags:  " + "  ".join(sums))
-    print(f"one-step RMSE: {r['rmse']:.4f}, residual sd: {r['sigma']:.4f}")
+    print("\nSum over lags:  " + "  ".join(sums))
+    print(f"One-step RMSE: {r['rmse']:.4f}, residual sd: {r['sigma']:.4f}")
     if r["sim"] is not None:
         if r["n_train"]:
-            print(f"simulation RMSE: training {r['rmse_train']:.3f}, "
+            print(f"Simulation RMSE: training {r['rmse_train']:.3f}, "
                   f"after training period {r['rmse_test']:.3f}, all {r['rmse_sim']:.3f}")
         else:
-            print(f"simulation RMSE: {r['rmse_sim']:.3f}")
+            print(f"Simulation RMSE: {r['rmse_sim']:.3f}")
 
 
 def fit_row(r, label=None):

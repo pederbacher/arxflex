@@ -202,14 +202,15 @@ class CompiledModel:
 
     @property
     def ntheta(self):
-        """Number of linear parameters, i.e. columns of the design matrix."""
+        """Number of regression coefficients, i.e. columns of the design matrix."""
         return self.Nd + sum(t.lags for t in self.terms)
 
     def objective(self, params):
-        """Residual sum of squares after solving the linear parameters by least squares.
+        """Residual sum of squares after solving the regression coefficients by
+        least squares.
 
         Rows with a missing value are left out; if too few remain to identify
-        the linear parameters, bad_fit is returned instead.
+        the regression coefficients, bad_fit is returned instead.
         """
         params = np.asarray(params, float)
         if not self.valid(params):
@@ -223,14 +224,14 @@ class CompiledModel:
         return least_squares(X, y)[1]
 
     def parameter_names(self):
-        """Names of the linear parameters, in design matrix order."""
+        """Names of the regression coefficients, in design matrix order."""
         names = [f"{self.y_name}(k-{j + 1})" for j in range(self.Nd)]
         for t in self.terms:
             names += [f"{t.name}(k-{t.lags - i})" for i in range(t.lags)]
         return names
 
     def theta_slices(self):
-        """{name: slice} of the linear parameters, "AR" plus one per term."""
+        """{name: slice} of the regression coefficients, "AR" plus one per term."""
         out, start = {AR_KEY: slice(0, self.Nd)}, self.Nd
         for t in self.terms:
             out[t.name] = slice(start, start + t.lags)

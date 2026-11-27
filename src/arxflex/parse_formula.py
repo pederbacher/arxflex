@@ -13,7 +13,7 @@ and kept as a fixed column; the nonlinear function is re-evaluated for every
 set of parameters the optimiser tries. A term may contain at most one
 nonlinear function (one s(...) or one v(...)), and it may only be multiplied
 or divided by data expressions, never added to them - a sum is two terms with
-a linear parameter each, so write it as two entries of the model dict.
+a regression coefficient each, so write it as two entries of the model dict.
 
 The formula is parsed with Python's own ast module, so parentheses, unary
 minus, keyword arguments and operator precedence all behave as in Python.
