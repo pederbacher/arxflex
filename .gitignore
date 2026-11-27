@@ -5,6 +5,6 @@ dist/
 .venv/
 .quarto/
 .jupyter_cache/
-*.quarto_ipynb
+*.quarto_ipynb*
 vignette_files/
 vignette.html

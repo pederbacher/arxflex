@@ -108,10 +108,11 @@ def room_frame(data, room):
         "timeofday": (time.dt.hour + time.dt.minute / 60).to_numpy(float),
     })
 
-room = available_rooms(data)[0]
+room = "1.09"
+available_rooms(data)
 df = room_frame(data, room)
-# df.describe().round(2)
 
+# Make a ts plot
 fig, axes = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
 axes[0].plot(df["time"], df["Ti"], label="Ti", color="orangered")
 axes[0].plot(df["time"], df["Tset"], label="Tset", color="grey", lw=1)
@@ -127,93 +128,88 @@ fig.suptitle(f"Room C{room}")
 fig.tight_layout()
 
 # %% [markdown]
-# ## First, fit a bit simple model
-# First fit a model, which is not including the ambient and solar parts, and one auto-regressive lag.
+# ## First, fit a "simple" model
+# Fit a model, with just one auto-regressive lag, and is not including the ambient and solar parts.
 #
 # The heating part: v(sigmoid, Tset - Ti) models the heat input using a sigmoid (two hyper parameters: position and slope).
 
 # %%
 model_sigmoid = {
     "AR": 1,
-    "ambient": "Ta - Ti",
-    "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+    "Ambient": "Ta - Ti",
+    "Heating": "v(sigmoid, Ti - Tset) * (Tfor - Ti)",
 }
 # Fit it to the data 
-fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
+fit = fitmodel(df, "Ti", model_sigmoid)
 
 # %% [markdown]
 # See the estimation and optimization results of the entire period using the fit
 # %%
-print_fit(fitSigmoid)
+print_fit(fit)
 
 # %% [markdown]
 # #### Plot the forecast over time
 # %%
-plot_simulation(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
-                inputs=["Ta", "Ps"], regcontribution=[["heating"]]);
+plot_simulation(fit, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tset"],
+                inputs=["Ta", "Ps"], regcontribution=[["Heating"]]);
 
 # %% [markdown]
-# #### ACF of the one-step residuals
+# #### Is the ACF of the one-step residuals significant?
 # %%
-plot_residuals(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
+plot_residuals(fit, name=f"C{room} sigmoid", per_day=PER_DAY);
 
 
 # %% [markdown]
-# We find that there still is some significant auto-correlation, so we will add one more AR lag
+# Yep, significant ACF, and a bit exponential decay, so add one more AR lag
 
 # %%
 model_sigmoid = {
     "AR": 2,
-    "ambient": "Ta - Ti",
-    "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+    "Ambient": "Ta - Ti",
+    "Heating": "v(sigmoid, Ti - Tset) * (Tfor - Ti)",
 }
 # Fit it to the data 
-fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
+fit = fitmodel(df, "Ti", model_sigmoid)
 
 # %% [markdown]
-# #### ACF of the one-step residuals
-# Now no significant ARC :)
+# #### Better ACF of the one-step residuals now?
+# Yes, now no significant ACF :)
 # %% 
-plot_residuals(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
+plot_residuals(fit, name=f"C{room} sigmoid", per_day=PER_DAY);
 
-
-
-# %%
-fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
-print_fit(fitSigmoid)
-
+# %% [markdown]
+# #### Check residuals for solar impact
 # Sunny against cloudy days, side by side on the same scales: a morning bump in
 # the residuals that is there on sunny days only points to direct solar gain.
-plot_daily_residuals(fitSigmoid, df, "Ps", 3.0, ["above", "below"],
+
+# %%
+plot_daily_residuals(fit, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
-################################################################
 
-
-################################################################
 # %% [markdown]
 # The full models
 # %%
 model_sigmoid = {
     "AR": 2,
-    "ambient": "Ta - Ti",
-    "solar": "s(timeofday, k=7, knots='free') * Ps",
-    "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+    "Ambient": "Ta - Ti",
+    "Solar": "s(timeofday, k=7, knots='free') * Ps",
+    "Heating": "v(sigmoid, Ti - Tset) * (Tfor - Ti)",
 }
 
 
 # %%
-fitSigmoid = fitmodel(df, "Ti", model_sigmoid)
-print_fit(fitSigmoid)
+fit = fitmodel(df, "Ti", model_sigmoid)
+print_fit(fit)
 #
 # Sunny against cloudy days, side by side on the same scales: a morning bump in
 # the residuals that is there on sunny days only points to direct solar gain.
-plot_daily_residuals(fitSigmoid, df, "Ps", 3.0, ["above", "below"],
+plot_daily_residuals(fit, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
 #
-plot_simulation(fitSigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
-                inputs=["Ta", "Ps"], regcontribution=[["heating"]]);
+plot_simulation(fit, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tset"],
+                inputs=["Ta", "Ps"], regcontribution=[["Heating"]]);
 #
-plot_blocks(fitSigmoid, max_day="solar", time=df["time"]);
+plot_blocks(fit, max_day="Solar", time=df["time"]);
 ################################################################
 
 # %% [markdown]
@@ -222,34 +218,35 @@ plot_blocks(fitSigmoid, max_day="solar", time=df["time"]);
 # A model is a dict of formula terms:
 #
 # - `"AR": 2` uses two lags of the output, Ti(k-1) and Ti(k-2).
-# - `"ambient": "Ta - Ti"` is the heat loss to the outside, linear in the data.
-# - `"solar": "s(timeofday, k=5) * Ps"` is the solar radiation multiplied by
+# - `"Ambient": "Ta - Ti"` is the heat loss to the outside, linear in the data.
+# - `"Solar": "s(timeofday, k=5) * Ps"` is the solar radiation multiplied by
 #   a **B-spline over the time of day**. The spline describes how much of
 #   the radiation reaches the room at each hour (window orientation, shading).
 #   `k` is the number of knots.
-# - `"heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)"` is the radiator. A
+# - `"Heating": "v(sigmoid, Ti - Tset) * (Tfor - Ti)"` is the radiator. A
 #   **sigmoid valve curve** in the distance to the set-point gives the valve
 #   opening, which multiplies the temperature difference that drives the heat
 #   flow.
 #
-# Each term gets one linear parameter per lag, found by least squares. The
+# Each term gets one regression coefficient per lag, found by least squares. The
 # parameters inside `s()` and `v()` are nonlinear, and SLSQP optimises them.
-# For every trial value the linear parameters are solved again.
+# For every trial value the regression coefficients are solved again.
 
 # %%
 model_sigmoid = {
     "AR": 2,
-    "ambient": "Ta - Ti",
-    "solar": "s(timeofday, k=5) * Ps",
-    "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+    "Ambient": "Ta - Ti",
+    "Solar": "s(timeofday, k=5) * Ps",
+    "Heating": "v(sigmoid, Ti - Tset) * (Tfor - Ti)",
 }
 
 # %% [markdown]
 # ## Fitting
 #
 # `fitmodel(data, y, model)` returns a dict with everything about the fit.
-# `print_fit()` prints a summary: the optimiser result, the nonlinear
-# parameters, the linear parameters, and the one-step and simulation errors.
+# `print_fit()` prints a summary: the optimiser result, the hyperparameters
+# (the nonlinear parameters), the regression coefficients with their standard
+# errors, and the one-step and simulation errors.
 
 # %%
 fit_sigmoid = fitmodel(df, "Ti", model_sigmoid)
@@ -267,7 +264,7 @@ print("simulation RMSE:", round(fit_sigmoid["rmse_sim"], 4))
 # %% [markdown]
 # ## Analysing the fit
 # %%
-plot_blocks(fit_sigmoid, max_day="solar", time=df["time"]);
+plot_blocks(fit_sigmoid, max_day="Solar", time=df["time"]);
 
 
 
@@ -287,9 +284,9 @@ plot_blocks(fit_sigmoid, max_day="solar", time=df["time"]);
 # prediction (`regcontribution=`), in °C.
 
 # %%
-plot_simulation(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
+plot_simulation(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tset"],
                 inputs=["Ta", "Ps"],
-                regcontribution=[["ambient", "solar", "heating"]]);
+                regcontribution=[["Ambient", "Solar", "Heating"]]);
 
 # %% [markdown]
 # ### Residuals
@@ -308,30 +305,30 @@ plot_residuals(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
 # %%
 plot_residual_series(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
                      inputs=["Ta", "Ps"],
-                     regcontribution=[["ambient", "solar", "heating"]]);
+                     regcontribution=[["Ambient", "Solar", "Heating"]]);
 
 # %% [markdown]
 # ### The estimated nonlinear functions
 #
 # `plot_blocks()` draws each `s()` and `v()` at the fitted parameters, with
 # the knots marked. For the solar term this is the gain over the day. For the
-# heating term it is the valve opening against `Tset - Ti`.
+# heating term it is the valve opening against `Ti - Tset`.
 #
-# With `max_day="solar"` a lower panel shows what the solar term adds to the
+# With `max_day="Solar"` a lower panel shows what the solar term adds to the
 # room temperature on the sunniest day (the largest daily sum of `Ps`): the
 # function multiplied by `Ps` and by the term's estimated coefficient (summed
 # over the lags), in °C.
 
 # %%
-plot_blocks(fit_sigmoid, max_day="solar", time=df["time"]);
+plot_blocks(fit_sigmoid, max_day="Solar", time=df["time"]);
 
 # %% [markdown]
 # The fitted functions are also available as callables, so they can be
 # evaluated directly:
 
 # %%
-valve = fit_sigmoid["functions"]["heating"]
-print("valve opening at Tset - Ti = -1, 0, 1:", np.round(valve([-1.0, 0.0, 1.0]), 3))
+valve = fit_sigmoid["functions"]["Heating"]
+print("valve opening at Ti - Tset = -1, 0, 1:", np.round(valve([-1.0, 0.0, 1.0]), 3))
 
 # %% [markdown]
 # ## Other model structures
@@ -350,20 +347,20 @@ models = {
     "sigmoid": model_sigmoid,
     "free knots": {
         "AR": 2,
-        "ambient": "Ta - Ti",
-        "solar": 's(timeofday, k=5, knots="free") * Ps',
-        "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+        "Ambient": "Ta - Ti",
+        "Solar": 's(timeofday, k=5, knots="free") * Ps',
+        "Heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
     },
     "pchip valve": {
         "AR": 2,
-        "ambient": "Ta - Ti",
-        "solar": "s(timeofday, k=4) * Ps",
-        "heating": "v(pchip, Tset - Ti, n=5) * (Tfor - Ti)",
+        "Ambient": "Ta - Ti",
+        "Solar": "s(timeofday, k=4) * Ps",
+        "Heating": "v(pchip, Tset - Ti, n=5) * (Tfor - Ti)",
     },
     "no solar": {
         "AR": 2,
-        "ambient": "Ta - Ti",
-        "heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
+        "Ambient": "Ta - Ti",
+        "Heating": "v(sigmoid, Tset - Ti) * (Tfor - Ti)",
     },
 }
 
@@ -371,7 +368,7 @@ fits = {"sigmoid": fit_sigmoid}
 for label, model in models.items():
     if label not in fits:
         fits[label] = fitmodel(df, "Ti", model)
-        plot_blocks(fits[label], max_day="solar", time=df["time"]);
+        plot_blocks(fits[label], max_day="Solar", time=df["time"]);
 
 
 # %% [markdown]
@@ -408,7 +405,7 @@ plt.show()
 fig, ax = plt.subplots(figsize=(5, 3.6))
 x = np.linspace(-4, 4, 300)
 for label in ("sigmoid", "pchip valve"):
-    ax.plot(x, fits[label]["functions"]["heating"](x), label=label)
+    ax.plot(x, fits[label]["functions"]["Heating"](x), label=label)
 ax.set_xlabel("Tset - Ti [°C]")
 ax.set_ylabel("valve opening")
 ax.legend()
@@ -420,7 +417,7 @@ plt.show()
 # ## Validation on unseen data
 #
 # With `n_train` the nonlinear parameters are fitted on the first `n_train`
-# samples only. With `refit_on_all_data=False` the linear parameters are
+# samples only. With `refit_on_all_data=False` the regression coefficients are
 # fitted on them too, so the rest of the period is a clean test set.
 # `rmse_train` and `rmse_test` give the simulation error on each part.
 
@@ -428,7 +425,7 @@ plt.show()
 n_train = 20 * PER_DAY       # the first 20 days
 fit_val = fitmodel(df, "Ti", model_sigmoid, n_train=n_train, refit_on_all_data=False)
 print(f"simulation RMSE: training {fit_val['rmse_train']:.3f}, test {fit_val['rmse_test']:.3f}")
-plot_simulation(fit_val, name=f"C{room} sigmoid, validation", per_day=PER_DAY);
+plot_simulation(fit_val, name=f"C{room} sigmoid, validation", per_day=PER_DAY, top=["Tset"]);
 plt.show()
 
 # %% [markdown]
