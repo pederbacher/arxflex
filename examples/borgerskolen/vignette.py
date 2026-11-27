@@ -53,7 +53,7 @@ plt.close("all")
 plt.ion()
 
 from arxflex import (fitmodel, print_fit, fit_row, plot_simulation,
-                     plot_residual_series, plot_residuals, plot_ccf,
+                     plot_residuals, plot_acf, plot_ccf,
                      plot_blocks, plot_daily_residuals)
 from arxflex_borgerskolen import load_processed_data, available_rooms, temperature_column
 
@@ -156,7 +156,7 @@ plot_simulation(fit, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tset"],
 # %% [markdown]
 # #### Is the ACF of the one-step residuals significant?
 # %%
-plot_residuals(fit, name=f"C{room} sigmoid", per_day=PER_DAY);
+plot_acf(fit, name=f"C{room} sigmoid");
 
 
 # %% [markdown]
@@ -175,7 +175,7 @@ fit = fitmodel(df, "Ti", model_sigmoid)
 # #### Better ACF of the one-step residuals now?
 # Yes, now no significant ACF :)
 # %% 
-plot_residuals(fit, name=f"C{room} sigmoid", per_day=PER_DAY);
+plot_acf(fit, name=f"C{room} sigmoid");
 
 # %% [markdown]
 # #### Check residuals for solar impact
@@ -205,6 +205,8 @@ print_fit(fit)
 # the residuals that is there on sunny days only points to direct solar gain.
 plot_daily_residuals(fit, df, "Ps", 3.0, ["above", "below"],
                      name=f"Room C{room}", unit="kW/m²", daily_unit="kWh/m²");
+#
+plot_acf(fit, name=f"C{room} sigmoid");
 #
 plot_simulation(fit, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tset"],
                 inputs=["Ta", "Ps"], regcontribution=[["Heating"]]);
@@ -295,17 +297,19 @@ plot_simulation(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tse
 # at small lags means there is dynamics the model does not capture.
 
 # %%
-plot_residuals(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY);
+plot_acf(fit_sigmoid, name=f"C{room} sigmoid");
 
 # %% [markdown]
-# `plot_residual_series()` puts the residuals above the same panels as
-# `plot_simulation()`, so large residuals can be matched with what the inputs and
-# terms did at that time.
+# `plot_residuals()` draws the residuals as a time series, with the one-step
+# prediction and the observations below them, and then the same panels as
+# `plot_simulation()`, so large residuals can be matched with what the inputs
+# and terms did at that time. Zoom in on a period with `xlim=`, e.g.
+# `xlim=(10, 13)` for days 10 to 13.
 
 # %%
-plot_residual_series(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY,
-                     inputs=["Ta", "Ps"],
-                     regcontribution=[["Ambient", "Solar", "Heating"]]);
+plot_residuals(fit_sigmoid, name=f"C{room} sigmoid", per_day=PER_DAY, top=["Tset"],
+               inputs=["Ta", "Ps"],
+               regcontribution=[["Ambient", "Solar", "Heating"]]);
 
 # %% [markdown]
 # ### The estimated nonlinear functions

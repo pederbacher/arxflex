@@ -1,6 +1,6 @@
 """Helpers shared by the plot functions: the time axis, the panels of inputs
 and regression terms, and the stacked figure of plot_simulation() and
-plot_residual_series()."""
+plot_residuals()."""
 
 import numpy as np
 
@@ -105,7 +105,8 @@ class TimeAxis:
 def stacked_figure(r, draw_top, title, axis, inputs=(), reginput=(),
                    regcontribution=(), data=None):
     """A figure with the top panel drawn by draw_top(ax, t), and one panel per
-    entry of `inputs`, `reginput` and `regcontribution` stacked under it."""
+    entry of `inputs`, `reginput` and `regcontribution` stacked under it.
+    draw_top may also be a list of such functions, one top panel each."""
     import matplotlib.pyplot as plt
 
     inputs = as_panels(inputs)
@@ -136,19 +137,23 @@ def stacked_figure(r, draw_top, title, axis, inputs=(), reginput=(),
                                values(r, nm)))
             draw_panel(ax, series, REG_COLOURS)
 
-    nrows = 1 + len(inputs) + len(reginput) + len(regcontribution)
-    fig, axes = plt.subplots(nrows, 1, figsize=(11, 2.8 + 1.5 * (nrows - 1)),
+    tops = list(draw_top) if isinstance(draw_top, (list, tuple)) else [draw_top]
+    ntop = len(tops)
+    nrows = ntop + len(inputs) + len(reginput) + len(regcontribution)
+    fig, axes = plt.subplots(nrows, 1,
+                             figsize=(11, 2.8 + 2.3 * (ntop - 1) + 1.5 * (nrows - ntop)),
                              sharex=True, squeeze=False,
-                             gridspec_kw={"height_ratios": [1.8] + [1] * (nrows - 1)})
+                             gridspec_kw={"height_ratios": [1.8] * ntop + [1] * (nrows - ntop)})
     axes = axes[:, 0]
-    ax = axes[0]
-    draw_top(ax, t)
-    if axis.t_train is not None:
-        ax.axvline(axis.t_train, color="grey", ls=":", label="end of training")
-    ax.legend(ncol=3, fontsize=9)
-    ax.grid(alpha=0.4)
+    for i, (ax, draw) in enumerate(zip(axes, tops)):
+        draw(ax, t)
+        if axis.t_train is not None:
+            ax.axvline(axis.t_train, color="grey", ls=":",
+                       label="end of training" if i == 0 else None)
+        ax.legend(ncol=3, fontsize=9)
+        ax.grid(alpha=0.4)
 
-    rows = iter(axes[1:])
+    rows = iter(axes[ntop:])
     for panel in inputs:
         draw_panel(next(rows), [(c, c, data_column(r, c, data)) for c in panel],
                    INPUT_COLOURS)

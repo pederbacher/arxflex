@@ -25,8 +25,8 @@ from .compile_model import CompiledModel, compile_model, BAD_FIT
 from .simulate_model import simulate_model
 from .fitmodel import fitmodel, print_fit, fit_row
 from .plot_simulation import plot_simulation
-from .plot_residual_series import plot_residual_series
 from .plot_residuals import plot_residuals
+from .plot_acf import plot_acf
 from .plot_ccf import plot_ccf
 from .plot_blocks import plot_blocks
 from .plot_daily_residuals import plot_daily_residuals
@@ -38,5 +38,5 @@ __all__ = ["Block", "BlockError", "BSplineBlock", "SigmoidBlock", "PchipBlock",
            "Term", "FormulaError", "parse_formula", "least_squares",
            "CompiledModel", "compile_model", "BAD_FIT", "simulate_model",
            "fitmodel", "print_fit", "fit_row", "plot_simulation",
-           "plot_residual_series", "plot_residuals", "plot_ccf", "plot_blocks",
+           "plot_residuals", "plot_acf", "plot_ccf", "plot_blocks",
            "plot_daily_residuals"]
